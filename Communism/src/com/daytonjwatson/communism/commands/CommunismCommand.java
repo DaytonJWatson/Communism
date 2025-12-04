@@ -26,6 +26,7 @@ import org.bukkit.inventory.meta.BookMeta;
 
 import com.daytonjwatson.communism.CommunismPlugin;
 import com.daytonjwatson.communism.managers.ResourceManager;
+import com.daytonjwatson.communism.managers.StatusMenuManager;
 import com.daytonjwatson.communism.utils.TaxTask;
 
 public class CommunismCommand implements CommandExecutor, TabCompleter {
@@ -33,12 +34,14 @@ public class CommunismCommand implements CommandExecutor, TabCompleter {
     private final CommunismPlugin plugin;
     private final ResourceManager resourceManager;
     private final com.daytonjwatson.communism.listeners.CommunismListener listener;
+    private final StatusMenuManager statusMenuManager;
 
     public CommunismCommand(CommunismPlugin plugin, ResourceManager resourceManager,
-            com.daytonjwatson.communism.listeners.CommunismListener listener) {
+            com.daytonjwatson.communism.listeners.CommunismListener listener, StatusMenuManager statusMenuManager) {
         this.plugin = plugin;
         this.resourceManager = resourceManager;
         this.listener = listener;
+        this.statusMenuManager = statusMenuManager;
     }
 
     @Override
@@ -111,6 +114,11 @@ public class CommunismCommand implements CommandExecutor, TabCompleter {
 
     private void handleStatus(CommandSender sender) {
         Map<Material, Integer> snapshot = resourceManager.getSnapshot();
+        if (sender instanceof Player) {
+            statusMenuManager.openStatusMenu((Player) sender, snapshot);
+            return;
+        }
+
         if (snapshot.isEmpty()) {
             sender.sendMessage(ChatColor.GRAY + "The State currently holds nothing. Even the bureaucracy is poor.");
             return;

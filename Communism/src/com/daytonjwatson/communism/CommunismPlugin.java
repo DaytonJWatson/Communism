@@ -7,6 +7,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import com.daytonjwatson.communism.commands.CommunismCommand;
 import com.daytonjwatson.communism.listeners.CommunismListener;
 import com.daytonjwatson.communism.managers.ResourceManager;
+import com.daytonjwatson.communism.managers.StatusMenuManager;
 import com.daytonjwatson.communism.utils.PropagandaTask;
 import com.daytonjwatson.communism.utils.TaxTask;
 
@@ -16,6 +17,7 @@ public class CommunismPlugin extends JavaPlugin {
 
     private ResourceManager resourceManager;
     private CommunismListener listener;
+    private StatusMenuManager statusMenuManager;
     private TaxTask taxTask;
     private PropagandaTask propagandaTask;
     private boolean enabled;
@@ -32,9 +34,11 @@ public class CommunismPlugin extends JavaPlugin {
         // Register listeners
         this.listener = new CommunismListener(this, resourceManager);
         Bukkit.getPluginManager().registerEvents(listener, this);
+        this.statusMenuManager = new StatusMenuManager(this);
+        Bukkit.getPluginManager().registerEvents(statusMenuManager, this);
 
         // Register command
-        CommunismCommand cmd = new CommunismCommand(this, resourceManager, listener);
+        CommunismCommand cmd = new CommunismCommand(this, resourceManager, listener, statusMenuManager);
         getCommand("communism").setExecutor(cmd);
         getCommand("communism").setTabCompleter(cmd);
 
