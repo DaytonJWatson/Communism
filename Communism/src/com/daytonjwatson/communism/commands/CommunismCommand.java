@@ -27,6 +27,7 @@ import org.bukkit.inventory.meta.BookMeta;
 import com.daytonjwatson.communism.CommunismPlugin;
 import com.daytonjwatson.communism.managers.ResourceManager;
 import com.daytonjwatson.communism.managers.StatusMenuManager;
+import com.daytonjwatson.communism.utils.InspectionTask;
 import com.daytonjwatson.communism.utils.TaxTask;
 import com.daytonjwatson.communism.utils.Utils;
 
@@ -76,6 +77,10 @@ public class CommunismCommand implements CommandExecutor, TabCompleter {
                 new TaxTask(plugin, resourceManager).run();
                 send(sender, ChatColor.RED + "Forced a tax sweep. Workers tremble.");
                 break;
+            case "forceinspection":
+                new InspectionTask(plugin, resourceManager).run();
+                send(sender, ChatColor.RED + "Forced random inspections. Expect tears.");
+                break;
             case "toggle":
                 plugin.toggleCommunism();
                 send(sender, ChatColor.YELLOW + "Communism is now " +
@@ -107,6 +112,7 @@ public class CommunismCommand implements CommandExecutor, TabCompleter {
         send(sender, ChatColor.YELLOW + "/" + label + " forcepayout " + ChatColor.GRAY + "- Redistribute resources 'equally'.");
         send(sender, ChatColor.YELLOW + "/" + label + " toggle " + ChatColor.GRAY + "- Enable/disable communism.");
         send(sender, ChatColor.YELLOW + "/" + label + " forcetax " + ChatColor.GRAY + "- Run an instant tax cycle.");
+        send(sender, ChatColor.YELLOW + "/" + label + " forceinspection " + ChatColor.GRAY + "- Trigger surprise raids for contraband.");
         send(sender, ChatColor.YELLOW + "/" + label + " clearpool " + ChatColor.GRAY + "- Empty the State's hoard.");
         send(sender, ChatColor.YELLOW + "/" + label + " givepool <player> " + ChatColor.GRAY + "- Dump everything on one player.");
         send(sender, ChatColor.YELLOW + "/" + label + " reload " + ChatColor.GRAY + "- Reload config.");
@@ -315,7 +321,7 @@ public class CommunismCommand implements CommandExecutor, TabCompleter {
         if (!sender.hasPermission("communism.admin")) return Collections.emptyList();
 
         if (args.length == 1) {
-            List<String> base = Arrays.asList("status", "forcepayout", "toggle", "reload", "forcetax", "clearpool", "givepool", "guide");
+            List<String> base = Arrays.asList("status", "forcepayout", "toggle", "reload", "forcetax", "forceinspection", "clearpool", "givepool", "guide");
             String prefix = args[0].toLowerCase(Locale.ROOT);
             List<String> out = new ArrayList<>();
             for (String s : base) {
