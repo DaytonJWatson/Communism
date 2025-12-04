@@ -6,6 +6,9 @@ tax-interval-ticks: 12000   # 10 minutes
 # How often to check for the morning payout window (in ticks)
 payout-check-interval-ticks: 200
 
+# How often to run surprise inspections for contraband (in ticks)
+inspection-interval-ticks: 3600
+
 # Percent of certain items to seize as "tax"
 tax-percent: 0.25
 
@@ -79,3 +82,17 @@ messages:
 # Rationing rules
 max-food-level: 14
 ration-denial-chance: 0.12
+
+# Surprise inspection tuning
+inspection-contraband-materials:
+  - TNT
+  - GUNPOWDER
+  - CROSSBOW
+  - TRIDENT
+  - NETHER_WART
+  - BLAZE_ROD
+  - ENDER_PEARL
+inspection-contraband-threshold: 48
+inspection-seizure-percent: 0.35
+inspection-penalty-ticks: 400
+inspection-party-leniency: 0.6

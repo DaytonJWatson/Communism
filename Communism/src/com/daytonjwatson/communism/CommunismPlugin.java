@@ -9,6 +9,7 @@ import com.daytonjwatson.communism.listeners.CommunismListener;
 import com.daytonjwatson.communism.managers.ResourceManager;
 import com.daytonjwatson.communism.managers.StatusMenuManager;
 import com.daytonjwatson.communism.utils.PayoutTask;
+import com.daytonjwatson.communism.utils.InspectionTask;
 import com.daytonjwatson.communism.utils.PropagandaTask;
 import com.daytonjwatson.communism.utils.TaxTask;
 
@@ -23,6 +24,7 @@ public class CommunismPlugin extends JavaPlugin {
     private TaxTask taxTask;
     private PropagandaTask propagandaTask;
     private PayoutTask payoutTask;
+    private InspectionTask inspectionTask;
     private boolean enabled;
 
     @Override
@@ -49,6 +51,7 @@ public class CommunismPlugin extends JavaPlugin {
         scheduleTaxTask();
         schedulePropagandaTask();
         schedulePayoutTask();
+        scheduleInspectionTask();
         getLogger().info("Communism enabled. All your loot belongs to the State.");
     }
 
@@ -62,6 +65,9 @@ public class CommunismPlugin extends JavaPlugin {
         }
         if (payoutTask != null) {
             payoutTask.cancel();
+        }
+        if (inspectionTask != null) {
+            inspectionTask.cancel();
         }
         if (resourceManager != null) {
             resourceManager.save();
@@ -93,6 +99,7 @@ public class CommunismPlugin extends JavaPlugin {
             scheduleTaxTask();
             schedulePropagandaTask();
             schedulePayoutTask();
+            scheduleInspectionTask();
         }
     }
 
@@ -130,5 +137,17 @@ public class CommunismPlugin extends JavaPlugin {
 
         payoutTask = new PayoutTask(this, communismCommand);
         payoutTask.runTaskTimer(this, 0L, checkInterval);
+    }
+
+    private void scheduleInspectionTask() {
+        if (inspectionTask != null) {
+            inspectionTask.cancel();
+        }
+
+        long interval = getConfig().getLong("inspection-interval-ticks", 3600L);
+        if (interval <= 0L) return;
+
+        inspectionTask = new InspectionTask(this, resourceManager);
+        inspectionTask.runTaskTimer(this, interval, interval);
     }
 }
