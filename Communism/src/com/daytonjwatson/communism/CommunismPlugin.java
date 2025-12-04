@@ -5,7 +5,6 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import com.daytonjwatson.communism.commands.CommunismCommand;
-import com.daytonjwatson.communism.gui.PayoutViewer;
 import com.daytonjwatson.communism.listeners.CommunismListener;
 import com.daytonjwatson.communism.managers.ResourceManager;
 import com.daytonjwatson.communism.utils.PropagandaTask;
@@ -17,7 +16,6 @@ public class CommunismPlugin extends JavaPlugin {
 
     private ResourceManager resourceManager;
     private CommunismListener listener;
-    private PayoutViewer payoutViewer;
     private TaxTask taxTask;
     private PropagandaTask propagandaTask;
     private boolean enabled;
@@ -31,15 +29,12 @@ public class CommunismPlugin extends JavaPlugin {
         this.resourceManager = new ResourceManager(this);
         this.resourceManager.load();
 
-        this.payoutViewer = new PayoutViewer();
-
         // Register listeners
         this.listener = new CommunismListener(this, resourceManager);
         Bukkit.getPluginManager().registerEvents(listener, this);
-        Bukkit.getPluginManager().registerEvents(payoutViewer, this);
 
         // Register command
-        CommunismCommand cmd = new CommunismCommand(this, resourceManager, listener, payoutViewer);
+        CommunismCommand cmd = new CommunismCommand(this, resourceManager, listener);
         getCommand("communism").setExecutor(cmd);
         getCommand("communism").setTabCompleter(cmd);
 
@@ -85,10 +80,6 @@ public class CommunismPlugin extends JavaPlugin {
         }
         scheduleTaxTask();
         schedulePropagandaTask();
-    }
-
-    public PayoutViewer getPayoutViewer() {
-        return payoutViewer;
     }
 
     private void scheduleTaxTask() {

@@ -5,12 +5,10 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.bukkit.Bukkit;
@@ -27,7 +25,6 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BookMeta;
 
 import com.daytonjwatson.communism.CommunismPlugin;
-import com.daytonjwatson.communism.gui.PayoutViewer;
 import com.daytonjwatson.communism.managers.ResourceManager;
 import com.daytonjwatson.communism.utils.TaxTask;
 
@@ -36,14 +33,12 @@ public class CommunismCommand implements CommandExecutor, TabCompleter {
     private final CommunismPlugin plugin;
     private final ResourceManager resourceManager;
     private final com.daytonjwatson.communism.listeners.CommunismListener listener;
-    private final PayoutViewer payoutViewer;
 
     public CommunismCommand(CommunismPlugin plugin, ResourceManager resourceManager,
-            com.daytonjwatson.communism.listeners.CommunismListener listener, PayoutViewer payoutViewer) {
+            com.daytonjwatson.communism.listeners.CommunismListener listener) {
         this.plugin = plugin;
         this.resourceManager = resourceManager;
         this.listener = listener;
-        this.payoutViewer = payoutViewer;
     }
 
     @Override
@@ -166,7 +161,6 @@ public class CommunismCommand implements CommandExecutor, TabCompleter {
         // For each material: split equally, but party members get a bigger slice,
         // illustrating corruption in the system.
         int materialsPaidOut = 0;
-        Map<UUID, Map<Material, Integer>> payouts = new HashMap<>();
 
         for (Map.Entry<Material, Integer> entry : snapshot.entrySet()) {
             Material mat = entry.getKey();
@@ -180,7 +174,6 @@ public class CommunismCommand implements CommandExecutor, TabCompleter {
 
                 for (Player p : online) {
                     giveSafe(p, new ItemStack(mat, perPlayer));
-                    recordPayout(payouts, p, mat, perPlayer);
                 }
                 resourceManager.remove(mat, perPlayer * totalPlayers);
                 materialsPaidOut++;
@@ -198,7 +191,6 @@ public class CommunismCommand implements CommandExecutor, TabCompleter {
                     int amount = (int) Math.floor((partyWeight / totalWeight) * total);
                     if (amount <= 0) continue;
                     giveSafe(p, new ItemStack(mat, amount));
-                    recordPayout(payouts, p, mat, amount);
                     distributed += amount;
                 }
 
@@ -206,7 +198,6 @@ public class CommunismCommand implements CommandExecutor, TabCompleter {
                     int amount = (int) Math.floor((workerWeight / totalWeight) * total);
                     if (amount <= 0) continue;
                     giveSafe(p, new ItemStack(mat, amount));
-                    recordPayout(payouts, p, mat, amount);
                     distributed += amount;
                 }
 
@@ -233,45 +224,11 @@ public class CommunismCommand implements CommandExecutor, TabCompleter {
             }
         }
 
-        payouts.forEach((uuid, payout) -> {
-            Player player = Bukkit.getPlayer(uuid);
-            if (player != null && player.isOnline()) {
-                payoutViewer.openViewer(player, buildDisplayStacks(payout));
-            }
-        });
-
         resourceManager.save();
     }
 
     private boolean isPartyMember(OfflinePlayer player, List<String> partyNames) {
         return partyNames.stream().anyMatch(n -> n.equalsIgnoreCase(player.getName()));
-    }
-
-    private void recordPayout(Map<UUID, Map<Material, Integer>> payouts, Player player, Material material, int amount) {
-        if (player == null || material == null || amount <= 0) return;
-        payouts.computeIfAbsent(player.getUniqueId(), id -> new EnumMap<>(Material.class))
-                .merge(material, amount, Integer::sum);
-    }
-
-    private List<ItemStack> buildDisplayStacks(Map<Material, Integer> payout) {
-        List<ItemStack> stacks = new ArrayList<>();
-        if (payout == null || payout.isEmpty()) return stacks;
-
-        for (Map.Entry<Material, Integer> entry : payout.entrySet()) {
-            Material material = entry.getKey();
-            int remaining = entry.getValue();
-            if (material == null || remaining <= 0) continue;
-
-            int maxStack = Math.max(1, material.getMaxStackSize());
-            while (remaining > 0) {
-                int stackAmount = Math.min(maxStack, remaining);
-                stacks.add(new ItemStack(material, stackAmount));
-                remaining -= stackAmount;
-            }
-        }
-
-        stacks.sort(Comparator.comparing(stack -> stack.getType().name()));
-        return stacks;
     }
 
     private void giveSafe(Player player, ItemStack stack) {
