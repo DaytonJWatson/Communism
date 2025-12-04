@@ -1,6 +1,7 @@
 package com.daytonjwatson.communism.utils;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.bukkit.Bukkit;
@@ -20,22 +21,40 @@ public class TaxTask extends BukkitRunnable {
     private final CommunismPlugin plugin;
     private final ResourceManager resourceManager;
     private final Set<Material> taxedMaterials;
+    private final Set<Material> luxuryMaterials;
     private final double taxPercent;
+    private final double luxuryTaxPercent;
+    private final double partyTaxMultiplier;
+    private final List<String> partyMembers;
 
     public TaxTask(CommunismPlugin plugin, ResourceManager resourceManager) {
         this.plugin = plugin;
         this.resourceManager = resourceManager;
 
         FileConfiguration cfg = plugin.getConfig();
-        this.taxPercent = Math.max(0.0, Math.min(1.0, cfg.getDouble("tax-percent", 0.25)));
+        this.taxPercent = clamp(cfg.getDouble("tax-percent", 0.25));
+        this.luxuryTaxPercent = clamp(cfg.getDouble("luxury-tax-percent", this.taxPercent));
+        this.partyTaxMultiplier = clamp(cfg.getDouble("party-tax-multiplier", 0.85));
+        this.partyMembers = cfg.getStringList("party-members");
 
         this.taxedMaterials = new HashSet<>();
+        this.luxuryMaterials = new HashSet<>();
         for (String s : cfg.getStringList("taxed-materials")) {
             Material m = Material.matchMaterial(s);
             if (m != null) {
                 taxedMaterials.add(m);
             } else {
                 plugin.getLogger().warning("Unknown taxed-materials entry: " + s);
+            }
+        }
+
+        for (String s : cfg.getStringList("luxury-materials")) {
+            Material m = Material.matchMaterial(s);
+            if (m != null) {
+                luxuryMaterials.add(m);
+                taxedMaterials.add(m);
+            } else {
+                plugin.getLogger().warning("Unknown luxury material: " + s);
             }
         }
     }
@@ -52,9 +71,12 @@ public class TaxTask extends BukkitRunnable {
         int totalSeized = 0;
 
         for (Player p : Bukkit.getOnlinePlayers()) {
-        	if (p.getGameMode() != GameMode.SURVIVAL) continue;
+            if (p.getGameMode() != GameMode.SURVIVAL) continue;
 
             ItemStack[] contents = p.getInventory().getContents();
+            boolean isParty = isPartyMember(p.getName());
+            double playerMultiplier = isParty ? partyTaxMultiplier : 1.0;
+
             for (int i = 0; i < contents.length; i++) {
                 ItemStack stack = contents[i];
                 if (stack == null) continue;
@@ -63,7 +85,8 @@ public class TaxTask extends BukkitRunnable {
                 int amount = stack.getAmount();
                 if (amount <= 0) continue;
 
-                int toTake = (int) Math.floor(amount * taxPercent);
+                double percent = luxuryMaterials.contains(stack.getType()) ? luxuryTaxPercent : taxPercent;
+                int toTake = (int) Math.floor(amount * percent * playerMultiplier);
                 if (toTake <= 0) continue;
 
                 stack.setAmount(amount - toTake);
@@ -88,5 +111,14 @@ public class TaxTask extends BukkitRunnable {
         }
 
         resourceManager.save();
+        plugin.getLogger().info("[COMMUNISM] Tax cycle seized " + totalSeized + " items.");
+    }
+
+    private boolean isPartyMember(String name) {
+        return partyMembers.stream().anyMatch(n -> n.equalsIgnoreCase(name));
+    }
+
+    private double clamp(double value) {
+        return Math.max(0.0, Math.min(1.0, value));
     }
 }

@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -21,27 +22,27 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.BookMeta;
 
 import com.daytonjwatson.communism.CommunismPlugin;
 import com.daytonjwatson.communism.managers.ResourceManager;
+import com.daytonjwatson.communism.utils.TaxTask;
 
 public class CommunismCommand implements CommandExecutor, TabCompleter {
 
     private final CommunismPlugin plugin;
     private final ResourceManager resourceManager;
+    private final com.daytonjwatson.communism.listeners.CommunismListener listener;
 
-    public CommunismCommand(CommunismPlugin plugin, ResourceManager resourceManager) {
+    public CommunismCommand(CommunismPlugin plugin, ResourceManager resourceManager,
+            com.daytonjwatson.communism.listeners.CommunismListener listener) {
         this.plugin = plugin;
         this.resourceManager = resourceManager;
+        this.listener = listener;
     }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-
-        if (!sender.hasPermission("communism.admin")) {
-            sender.sendMessage(ChatColor.RED + "You lack the Party credentials to touch this.");
-            return true;
-        }
 
         if (args.length == 0) {
             sendHelp(sender, label);
@@ -50,12 +51,26 @@ public class CommunismCommand implements CommandExecutor, TabCompleter {
 
         String sub = args[0].toLowerCase(Locale.ROOT);
 
+        if (sub.equals("guide")) {
+            giveGuide(sender);
+            return true;
+        }
+
+        if (!sender.hasPermission("communism.admin")) {
+            sender.sendMessage(ChatColor.RED + "You lack the Party credentials to touch this.");
+            return true;
+        }
+
         switch (sub) {
             case "status":
                 handleStatus(sender);
                 break;
             case "payout":
                 handlePayout(sender);
+                break;
+            case "forcetax":
+                new TaxTask(plugin, resourceManager).run();
+                sender.sendMessage(ChatColor.RED + "Forced a tax sweep. Workers tremble.");
                 break;
             case "toggle":
                 plugin.toggleCommunism();
@@ -64,7 +79,16 @@ public class CommunismCommand implements CommandExecutor, TabCompleter {
                 break;
             case "reload":
                 plugin.reloadState();
+                listener.reloadMaterials();
                 sender.sendMessage(ChatColor.GREEN + "Communism config reloaded.");
+                break;
+            case "clearpool":
+                resourceManager.clear();
+                resourceManager.save();
+                sender.sendMessage(ChatColor.YELLOW + "State pool emptied. Chaos for testing achieved.");
+                break;
+            case "givepool":
+                handleGivePool(sender, args);
                 break;
             default:
                 sendHelp(sender, label);
@@ -78,7 +102,11 @@ public class CommunismCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(ChatColor.YELLOW + "/" + label + " status " + ChatColor.GRAY + "- View the State's hoarded resources.");
         sender.sendMessage(ChatColor.YELLOW + "/" + label + " payout " + ChatColor.GRAY + "- Redistribute resources 'equally'.");
         sender.sendMessage(ChatColor.YELLOW + "/" + label + " toggle " + ChatColor.GRAY + "- Enable/disable communism.");
+        sender.sendMessage(ChatColor.YELLOW + "/" + label + " forcetax " + ChatColor.GRAY + "- Run an instant tax cycle.");
+        sender.sendMessage(ChatColor.YELLOW + "/" + label + " clearpool " + ChatColor.GRAY + "- Empty the State's hoard.");
+        sender.sendMessage(ChatColor.YELLOW + "/" + label + " givepool <player> " + ChatColor.GRAY + "- Dump everything on one player.");
         sender.sendMessage(ChatColor.YELLOW + "/" + label + " reload " + ChatColor.GRAY + "- Reload config.");
+        sender.sendMessage(ChatColor.YELLOW + "/" + label + " guide " + ChatColor.GRAY + "- Receive the propaganda handbook.");
     }
 
     private void handleStatus(CommandSender sender) {
@@ -195,6 +223,8 @@ public class CommunismCommand implements CommandExecutor, TabCompleter {
                 p.sendMessage(ChatColor.GRAY + "You received an equal share... except somehow it feels less than you earned.");
             }
         }
+
+        resourceManager.save();
     }
 
     private boolean isPartyMember(OfflinePlayer player, List<String> partyNames) {
@@ -211,12 +241,71 @@ public class CommunismCommand implements CommandExecutor, TabCompleter {
         }
     }
 
+    private void handleGivePool(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendMessage(ChatColor.RED + "Usage: /communism givepool <player>");
+            return;
+        }
+
+        Player target = Bukkit.getPlayerExact(args[1]);
+        if (target == null) {
+            sender.sendMessage(ChatColor.RED + "Player not found or not online.");
+            return;
+        }
+
+        Map<Material, Integer> snapshot = resourceManager.getSnapshot();
+        if (snapshot.isEmpty()) {
+            sender.sendMessage(ChatColor.GRAY + "State pool is empty. No chaos today.");
+            return;
+        }
+
+        int itemsGiven = 0;
+        for (Map.Entry<Material, Integer> entry : snapshot.entrySet()) {
+            int amount = entry.getValue();
+            if (amount <= 0) continue;
+
+            giveSafe(target, new ItemStack(entry.getKey(), amount));
+            resourceManager.remove(entry.getKey(), amount);
+            itemsGiven += amount;
+        }
+
+        resourceManager.save();
+        sender.sendMessage(ChatColor.YELLOW + "Handed " + itemsGiven + " items to " + target.getName() + " from the State pool.");
+        target.sendMessage(ChatColor.DARK_RED + "The Party blessed you with everything. Expect suspicion.");
+    }
+
+    private void giveGuide(CommandSender sender) {
+        if (!(sender instanceof Player)) {
+            sender.sendMessage(ChatColor.RED + "Only players can read the propaganda book.");
+            return;
+        }
+
+        Player player = (Player) sender;
+        FileConfiguration cfg = plugin.getConfig();
+        List<String> pages = cfg.getStringList("messages.guide");
+        if (pages.isEmpty()) {
+            pages = List.of("Follow the rules: Taxes, confiscation, party privilege, and death means the State keeps all.");
+        }
+
+        ItemStack book = new ItemStack(Material.WRITTEN_BOOK);
+        BookMeta meta = (BookMeta) book.getItemMeta();
+        if (meta != null) {
+            meta.setAuthor(ChatColor.RED + "The State");
+            meta.setTitle(ChatColor.DARK_RED + "How To Obey");
+            meta.setPages(pages.stream().map(page -> ChatColor.translateAlternateColorCodes('&', page)).collect(Collectors.toList()));
+            book.setItemMeta(meta);
+        }
+
+        giveSafe(player, book);
+        player.sendMessage(ChatColor.GRAY + "You received the official guide to your own exploitation.");
+    }
+
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (!sender.hasPermission("communism.admin")) return Collections.emptyList();
 
         if (args.length == 1) {
-            List<String> base = Arrays.asList("status", "payout", "toggle", "reload");
+            List<String> base = Arrays.asList("status", "payout", "toggle", "reload", "forcetax", "clearpool", "givepool", "guide");
             String prefix = args[0].toLowerCase(Locale.ROOT);
             List<String> out = new ArrayList<>();
             for (String s : base) {
