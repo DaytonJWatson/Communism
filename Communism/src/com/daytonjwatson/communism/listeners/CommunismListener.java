@@ -27,6 +27,8 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.scoreboard.Scoreboard;
+import org.bukkit.scoreboard.Team;
 
 import com.daytonjwatson.communism.CommunismPlugin;
 import com.daytonjwatson.communism.managers.ResourceManager;
@@ -359,8 +361,10 @@ public class CommunismListener implements Listener {
         if (isParty) {
             String prefix = plugin.getConfig().getString("party-name-prefix", "[PARTY] ");
             player.setDisplayName(prefix + player.getName());
+            applyPartyPrefix(player, prefix);
         } else {
             player.setDisplayName(player.getName());
+            removePartyPrefix(player);
         }
     }
 
@@ -373,5 +377,28 @@ public class CommunismListener implements Listener {
         if (luxuryMaterials.contains(material)) return luxuryTaxPercent;
         if (taxedMaterials.contains(material)) return baseTaxPercent;
         return allowGeneralTax ? generalActivityTaxPercent : 0.0;
+    }
+
+    private void applyPartyPrefix(Player player, String rawPrefix) {
+        Scoreboard scoreboard = Bukkit.getScoreboardManager().getMainScoreboard();
+        Team partyTeam = scoreboard.getTeam("CommunismParty");
+        String prefix = ChatColor.translateAlternateColorCodes('&', rawPrefix);
+
+        if (partyTeam == null) {
+            partyTeam = scoreboard.registerNewTeam("CommunismParty");
+        }
+
+        partyTeam.setPrefix(prefix);
+        partyTeam.addEntry(player.getName());
+    }
+
+    private void removePartyPrefix(Player player) {
+        Scoreboard scoreboard = Bukkit.getScoreboardManager().getMainScoreboard();
+        Team partyTeam = scoreboard.getTeam("CommunismParty");
+        if (partyTeam == null) return;
+
+        if (partyTeam.hasEntry(player.getName())) {
+            partyTeam.removeEntry(player.getName());
+        }
     }
 }
