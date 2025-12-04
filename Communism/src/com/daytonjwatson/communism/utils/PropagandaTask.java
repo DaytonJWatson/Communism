@@ -8,7 +8,6 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import com.daytonjwatson.communism.CommunismPlugin;
-import com.daytonjwatson.communism.utils.Utils;
 
 public class PropagandaTask extends BukkitRunnable {
 
