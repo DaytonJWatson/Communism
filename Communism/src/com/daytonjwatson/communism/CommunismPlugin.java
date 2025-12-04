@@ -7,6 +7,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import com.daytonjwatson.communism.commands.CommunismCommand;
 import com.daytonjwatson.communism.listeners.CommunismListener;
 import com.daytonjwatson.communism.managers.ResourceManager;
+import com.daytonjwatson.communism.utils.PropagandaTask;
 import com.daytonjwatson.communism.utils.TaxTask;
 
 public class CommunismPlugin extends JavaPlugin {
@@ -14,6 +15,9 @@ public class CommunismPlugin extends JavaPlugin {
     private static CommunismPlugin instance;
 
     private ResourceManager resourceManager;
+    private CommunismListener listener;
+    private TaxTask taxTask;
+    private PropagandaTask propagandaTask;
     private boolean enabled;
 
     @Override
@@ -26,20 +30,28 @@ public class CommunismPlugin extends JavaPlugin {
         this.resourceManager.load();
 
         // Register listeners
-        Bukkit.getPluginManager().registerEvents(new CommunismListener(this, resourceManager), this);
+        this.listener = new CommunismListener(this, resourceManager);
+        Bukkit.getPluginManager().registerEvents(listener, this);
 
         // Register command
-        CommunismCommand cmd = new CommunismCommand(this, resourceManager);
+        CommunismCommand cmd = new CommunismCommand(this, resourceManager, listener);
         getCommand("communism").setExecutor(cmd);
         getCommand("communism").setTabCompleter(cmd);
 
         // Schedule taxes
         scheduleTaxTask();
+        schedulePropagandaTask();
         getLogger().info("Communism enabled. All your loot belongs to the State.");
     }
 
     @Override
     public void onDisable() {
+        if (taxTask != null) {
+            taxTask.cancel();
+        }
+        if (propagandaTask != null) {
+            propagandaTask.cancel();
+        }
         if (resourceManager != null) {
             resourceManager.save();
         }
@@ -63,12 +75,34 @@ public class CommunismPlugin extends JavaPlugin {
     public void reloadState() {
         reloadConfig();
         this.enabled = getConfig().getBoolean("enabled", true);
+        if (listener != null) {
+            listener.reloadMaterials();
+        }
+        scheduleTaxTask();
+        schedulePropagandaTask();
     }
 
     private void scheduleTaxTask() {
+        if (taxTask != null) {
+            taxTask.cancel();
+        }
+
         long interval = getConfig().getLong("tax-interval-ticks", 12000L);
         if (interval <= 0) return;
 
-        new TaxTask(this, resourceManager).runTaskTimer(this, interval, interval);
+        taxTask = new TaxTask(this, resourceManager);
+        taxTask.runTaskTimer(this, interval, interval);
+    }
+
+    private void schedulePropagandaTask() {
+        if (propagandaTask != null) {
+            propagandaTask.cancel();
+        }
+
+        long interval = getConfig().getLong("propaganda-interval-ticks", 6000L);
+        if (interval <= 0) return;
+
+        propagandaTask = new PropagandaTask(this);
+        propagandaTask.runTaskTimer(this, interval, interval);
     }
 }
