@@ -183,7 +183,8 @@ public class CommunismCommand implements CommandExecutor, TabCompleter {
                 for (Player p : online) {
                     giveSafe(p, new ItemStack(mat, perPlayer));
                 }
-                resourceManager.remove(mat, perPlayer * totalPlayers);
+                // Remove the entire pool amount so leftovers aren't hoarded.
+                resourceManager.remove(mat, total);
                 materialsPaidOut++;
             } else {
                 // Weighted payout
@@ -193,23 +194,20 @@ public class CommunismCommand implements CommandExecutor, TabCompleter {
                 double totalWeight = partyPlayers.size() * partyWeight + workers.size() * workerWeight;
                 if (totalWeight <= 0) continue;
 
-                int distributed = 0;
-
                 for (Player p : partyPlayers) {
                     int amount = (int) Math.floor((partyWeight / totalWeight) * total);
                     if (amount <= 0) continue;
                     giveSafe(p, new ItemStack(mat, amount));
-                    distributed += amount;
                 }
 
                 for (Player p : workers) {
                     int amount = (int) Math.floor((workerWeight / totalWeight) * total);
                     if (amount <= 0) continue;
                     giveSafe(p, new ItemStack(mat, amount));
-                    distributed += amount;
                 }
 
-                resourceManager.remove(mat, distributed);
+                // Remove the entire pool amount so leftovers aren't hoarded.
+                resourceManager.remove(mat, total);
                 materialsPaidOut++;
             }
         }
