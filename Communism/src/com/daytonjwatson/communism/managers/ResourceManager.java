@@ -69,11 +69,12 @@ public class ResourceManager {
     }
 
     public synchronized void add(Material material, int amount) {
-        if (amount <= 0) return;
+        if (material == null || amount <= 0) return;
         pool.merge(material, amount, Integer::sum);
     }
 
     public synchronized int get(Material material) {
+        if (material == null) return 0;
         return pool.getOrDefault(material, 0);
     }
 
@@ -82,7 +83,7 @@ public class ResourceManager {
     }
 
     public synchronized void remove(Material material, int amount) {
-        if (amount <= 0) return;
+        if (material == null || amount <= 0) return;
         int current = pool.getOrDefault(material, 0);
         int next = current - amount;
         if (next <= 0) {
@@ -94,5 +95,9 @@ public class ResourceManager {
 
     public synchronized Set<Material> getStoredMaterials() {
         return pool.keySet();
+    }
+
+    public synchronized void clear() {
+        pool.clear();
     }
 }
