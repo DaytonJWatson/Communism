@@ -1,12 +1,15 @@
 package com.daytonjwatson.communism.listeners;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.UUID;
 
 import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
@@ -45,6 +48,7 @@ public class CommunismListener implements Listener {
     private double luxuryTaxPercent;
     private double generalActivityTaxPercent;
     private final Random random;
+    private final Map<UUID, Material> lastSeizedBlockMessage;
 
     public CommunismListener(CommunismPlugin plugin, ResourceManager resourceManager) {
         this.plugin = plugin;
@@ -53,6 +57,7 @@ public class CommunismListener implements Listener {
         this.taxedMaterials = new HashSet<>();
         this.luxuryMaterials = new HashSet<>();
         this.random = new Random();
+        this.lastSeizedBlockMessage = new HashMap<>();
         reloadMaterials();
     }
 
@@ -119,10 +124,7 @@ public class CommunismListener implements Listener {
             resourceManager.add(type, 1);
         }
 
-        player.sendMessage(ChatColor.RED + "" + ChatColor.BOLD +
-                "All " + type.name() + " now belong to the State.");
-        player.sendMessage(ChatColor.GRAY +
-                "You worked, but the Party keeps the profit. Enjoy equality in poverty.");
+        sendSeizureMessage(player, type);
     }
 
     @EventHandler
@@ -148,7 +150,7 @@ public class CommunismListener implements Listener {
         }
 
         if (seized > 0) {
-            killer.sendMessage(ChatColor.RED + "The State confiscated your spoils before you could blink.");
+            sendMessage(killer, ChatColor.RED + "The State confiscated your spoils before you could blink.");
             resourceManager.save();
         }
     }
@@ -178,7 +180,7 @@ public class CommunismListener implements Listener {
 
         resourceManager.add(type, seized);
         resourceManager.save();
-        player.sendMessage(ChatColor.RED + "The furnace attendant quietly rerouted " + seized + " items to the State.");
+        sendMessage(player, ChatColor.RED + "The furnace attendant quietly rerouted " + seized + " items to the State.");
     }
 
     @EventHandler
@@ -203,11 +205,11 @@ public class CommunismListener implements Listener {
 
         if (remainder <= 0) {
             event.setCancelled(true);
-            player.sendMessage(ChatColor.RED + "The State snatched the item before you could pick it up.");
+            sendMessage(player, ChatColor.RED + "The State snatched the item before you could pick it up.");
         } else {
             stack.setAmount(remainder);
             event.getItem().setItemStack(stack);
-            player.sendMessage(ChatColor.RED + "The State skims " + toTake + " from everything you touch.");
+            sendMessage(player, ChatColor.RED + "The State skims " + toTake + " from everything you touch.");
         }
 
         resourceManager.add(type, toTake);
@@ -235,11 +237,11 @@ public class CommunismListener implements Listener {
         int remainder = result.getAmount() - toTake;
         if (remainder <= 0) {
             event.setCancelled(true);
-            player.sendMessage(ChatColor.RED + "The workshop foreman rejected your craft as untaxed.");
+            sendMessage(player, ChatColor.RED + "The workshop foreman rejected your craft as untaxed.");
         } else {
             result.setAmount(remainder);
             event.setCurrentItem(result);
-            player.sendMessage(ChatColor.RED + "The State kept " + toTake + " of your freshly crafted goods.");
+            sendMessage(player, ChatColor.RED + "The State kept " + toTake + " of your freshly crafted goods.");
         }
 
         resourceManager.add(type, toTake);
@@ -266,11 +268,11 @@ public class CommunismListener implements Listener {
         int remainder = stack.getAmount() - toTake;
         if (remainder <= 0) {
             caught.remove();
-            player.sendMessage(ChatColor.GRAY + "The fishing inspector confiscated your entire catch.");
+            sendMessage(player, ChatColor.GRAY + "The fishing inspector confiscated your entire catch.");
         } else {
             stack.setAmount(remainder);
             caught.setItemStack(stack);
-            player.sendMessage(ChatColor.GRAY + "You lost " + toTake + " fish to surprise inspection.");
+            sendMessage(player, ChatColor.GRAY + "You lost " + toTake + " fish to surprise inspection.");
         }
 
         resourceManager.add(type, toTake);
@@ -301,7 +303,7 @@ public class CommunismListener implements Listener {
             if (seized > 0) {
                 resourceManager.add(type, seized);
                 resourceManager.save();
-                player.sendMessage(ChatColor.RED + "Consumption tax deducted " + seized + " extra item(s). Enjoy your crumbs.");
+                sendMessage(player, ChatColor.RED + "Consumption tax deducted " + seized + " extra item(s). Enjoy your crumbs.");
             }
         });
     }
@@ -324,7 +326,7 @@ public class CommunismListener implements Listener {
 
         if (seized > 0) {
             resourceManager.save();
-            player.sendMessage(ChatColor.DARK_RED + "Your death was patriotic. The State kept everything.");
+            sendMessage(player, ChatColor.DARK_RED + "Your death was patriotic. The State kept everything.");
         }
     }
 
@@ -341,13 +343,13 @@ public class CommunismListener implements Listener {
 
         if (random.nextDouble() < rationChance) {
             event.setCancelled(true);
-            player.sendMessage(ChatColor.GRAY + cfg.getString("messages.rations", "Rations were cut without explanation."));
+            sendMessage(player, ChatColor.GRAY + cfg.getString("messages.rations", "Rations were cut without explanation."));
             return;
         }
 
         if (newLevel > maxFood) {
             event.setFoodLevel(maxFood);
-            player.sendMessage(ChatColor.RED + "Your ration booklet only allows you to be this full: " + maxFood + ".");
+            sendMessage(player, ChatColor.RED + "Your ration booklet only allows you to be this full: " + maxFood + ".");
         }
     }
 
@@ -369,8 +371,33 @@ public class CommunismListener implements Listener {
         }
     }
 
+    private void sendSeizureMessage(Player player, Material type) {
+        Material lastType = lastSeizedBlockMessage.get(player.getUniqueId());
+        if (type != null && type.equals(lastType)) return;
+
+        lastSeizedBlockMessage.put(player.getUniqueId(), type);
+        sendMessage(player, ChatColor.RED + "State seized " + ChatColor.WHITE + humanizeMaterial(type) + ChatColor.RED
+                + ". Labor honors the collective.");
+    }
+
     private double clampPercent(double value) {
         return Math.max(0.0, Math.min(1.0, value));
+    }
+
+    private void sendMessage(Player player, String message) {
+        player.sendMessage(Utils.PREFIX + message);
+    }
+
+    private String humanizeMaterial(Material material) {
+        if (material == null) return "unknown goods";
+        String name = material.name().toLowerCase(Locale.ROOT).replace('_', ' ');
+        String[] parts = name.split(" ");
+        StringBuilder builder = new StringBuilder();
+        for (String part : parts) {
+            if (part.isEmpty()) continue;
+            builder.append(Character.toUpperCase(part.charAt(0))).append(part.substring(1)).append(' ');
+        }
+        return builder.toString().trim();
     }
 
     private double getTaxPercent(Material material, boolean allowGeneralTax) {

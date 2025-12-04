@@ -4,11 +4,11 @@ import java.util.List;
 import java.util.Random;
 
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import com.daytonjwatson.communism.CommunismPlugin;
+import com.daytonjwatson.communism.utils.Utils;
 
 public class PropagandaTask extends BukkitRunnable {
 
@@ -29,6 +29,6 @@ public class PropagandaTask extends BukkitRunnable {
         if (propaganda.isEmpty()) return;
 
         String message = propaganda.get(random.nextInt(propaganda.size()));
-        Bukkit.broadcastMessage(ChatColor.DARK_RED + "[PROPAGANDA] " + ChatColor.GRAY + message);
+        Bukkit.broadcastMessage(Utils.prefix("&7" + message));
     }
 }
