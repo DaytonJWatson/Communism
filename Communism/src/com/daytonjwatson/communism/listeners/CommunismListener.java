@@ -20,6 +20,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockDropItemEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.FoodLevelChangeEvent;
@@ -29,6 +30,7 @@ import org.bukkit.event.inventory.CraftItemEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.player.PlayerFishEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
@@ -128,6 +130,43 @@ public class CommunismListener implements Listener {
     }
 
     @EventHandler
+    public void onBlockDrop(BlockDropItemEvent event) {
+        if (!plugin.isCommunismEnabled()) return;
+
+        Player player = event.getPlayer();
+        if (player.getGameMode() != GameMode.SURVIVAL) return;
+
+        int seized = 0;
+        for (org.bukkit.entity.Item drop : event.getItems()) {
+            ItemStack stack = drop.getItemStack();
+            if (stack == null || stack.getType() == Material.AIR) continue;
+
+            Material type = stack.getType();
+            double percent = getTaxPercent(type, true);
+            if (percent <= 0) continue;
+
+            int toTake = (int) Math.floor(stack.getAmount() * percent);
+            if (toTake <= 0) continue;
+
+            int remainder = stack.getAmount() - toTake;
+            if (remainder <= 0) {
+                drop.remove();
+            } else {
+                stack.setAmount(remainder);
+                drop.setItemStack(stack);
+            }
+
+            resourceManager.add(type, toTake);
+            seized += toTake;
+        }
+
+        if (seized > 0) {
+            sendSeizureMessage(player, event.getBlockState().getType());
+            resourceManager.save();
+        }
+    }
+
+    @EventHandler
     public void onMobDeath(EntityDeathEvent event) {
         if (!plugin.isCommunismEnabled()) return;
         if (!(event.getEntity().getKiller() instanceof Player)) return;
@@ -142,11 +181,19 @@ public class CommunismListener implements Listener {
             if (drop == null || drop.getType() == Material.AIR) continue;
 
             Material type = drop.getType();
-            if (!taxedMaterials.contains(type) && !seizedBlocks.contains(type)) continue;
+            double percent = getTaxPercent(type, true);
+            if (percent <= 0) continue;
 
-            resourceManager.add(type, drop.getAmount());
-            iterator.remove();
-            seized += drop.getAmount();
+            int toTake = (int) Math.floor(drop.getAmount() * percent);
+            if (toTake <= 0) continue;
+
+            drop.setAmount(drop.getAmount() - toTake);
+            if (drop.getAmount() <= 0) {
+                iterator.remove();
+            }
+
+            resourceManager.add(type, toTake);
+            seized += toTake;
         }
 
         if (seized > 0) {
@@ -214,6 +261,35 @@ public class CommunismListener implements Listener {
 
         resourceManager.add(type, toTake);
         resourceManager.save();
+    }
+
+    @EventHandler
+    public void onPlayerDrop(PlayerDropItemEvent event) {
+        if (!plugin.isCommunismEnabled()) return;
+
+        Player player = event.getPlayer();
+        if (player.getGameMode() != GameMode.SURVIVAL) return;
+
+        ItemStack stack = event.getItemDrop().getItemStack();
+        if (stack == null || stack.getType() == Material.AIR) return;
+
+        double percent = getTaxPercent(stack.getType(), true);
+        if (percent <= 0) return;
+
+        int toTake = (int) Math.floor(stack.getAmount() * percent);
+        if (toTake <= 0) return;
+
+        int remainder = stack.getAmount() - toTake;
+        if (remainder <= 0) {
+            event.getItemDrop().remove();
+        } else {
+            stack.setAmount(remainder);
+            event.getItemDrop().setItemStack(stack);
+        }
+
+        resourceManager.add(stack.getType(), toTake);
+        resourceManager.save();
+        sendMessage(player, ChatColor.RED + "The State seized part of what you tried to abandon.");
     }
 
     @EventHandler
