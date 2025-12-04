@@ -8,6 +8,7 @@ import com.daytonjwatson.communism.commands.CommunismCommand;
 import com.daytonjwatson.communism.listeners.CommunismListener;
 import com.daytonjwatson.communism.managers.ResourceManager;
 import com.daytonjwatson.communism.managers.StatusMenuManager;
+import com.daytonjwatson.communism.utils.PayoutTask;
 import com.daytonjwatson.communism.utils.PropagandaTask;
 import com.daytonjwatson.communism.utils.TaxTask;
 
@@ -18,8 +19,10 @@ public class CommunismPlugin extends JavaPlugin {
     private ResourceManager resourceManager;
     private CommunismListener listener;
     private StatusMenuManager statusMenuManager;
+    private CommunismCommand communismCommand;
     private TaxTask taxTask;
     private PropagandaTask propagandaTask;
+    private PayoutTask payoutTask;
     private boolean enabled;
 
     @Override
@@ -38,13 +41,14 @@ public class CommunismPlugin extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(statusMenuManager, this);
 
         // Register command
-        CommunismCommand cmd = new CommunismCommand(this, resourceManager, listener, statusMenuManager);
-        getCommand("communism").setExecutor(cmd);
-        getCommand("communism").setTabCompleter(cmd);
+        communismCommand = new CommunismCommand(this, resourceManager, listener, statusMenuManager);
+        getCommand("communism").setExecutor(communismCommand);
+        getCommand("communism").setTabCompleter(communismCommand);
 
         // Schedule taxes
         scheduleTaxTask();
         schedulePropagandaTask();
+        schedulePayoutTask();
         getLogger().info("Communism enabled. All your loot belongs to the State.");
     }
 
@@ -55,6 +59,9 @@ public class CommunismPlugin extends JavaPlugin {
         }
         if (propagandaTask != null) {
             propagandaTask.cancel();
+        }
+        if (payoutTask != null) {
+            payoutTask.cancel();
         }
         if (resourceManager != null) {
             resourceManager.save();
@@ -82,8 +89,11 @@ public class CommunismPlugin extends JavaPlugin {
         if (listener != null) {
             listener.reloadMaterials();
         }
-        scheduleTaxTask();
-        schedulePropagandaTask();
+        if (resourceManager != null && communismCommand != null) {
+            scheduleTaxTask();
+            schedulePropagandaTask();
+            schedulePayoutTask();
+        }
     }
 
     private void scheduleTaxTask() {
@@ -108,5 +118,17 @@ public class CommunismPlugin extends JavaPlugin {
 
         propagandaTask = new PropagandaTask(this);
         propagandaTask.runTaskTimer(this, interval, interval);
+    }
+
+    private void schedulePayoutTask() {
+        if (payoutTask != null) {
+            payoutTask.cancel();
+        }
+
+        long checkInterval = getConfig().getLong("payout-check-interval-ticks", 200L);
+        if (checkInterval <= 0 || communismCommand == null) return;
+
+        payoutTask = new PayoutTask(this, communismCommand);
+        payoutTask.runTaskTimer(this, 0L, checkInterval);
     }
 }

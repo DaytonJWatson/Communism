@@ -3,6 +3,9 @@ enabled: true
 # How often the State taxes players (in ticks)
 tax-interval-ticks: 12000   # 10 minutes
 
+# How often to check for the morning payout window (in ticks)
+payout-check-interval-ticks: 200
+
 # Percent of certain items to seize as "tax"
 tax-percent: 0.25
 

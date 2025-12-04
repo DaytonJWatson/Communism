@@ -8,4 +8,4 @@ description: A very real plugin that forces players into a centralised "communis
 commands:
   communism:
     description: Manage the communism system.
-    usage: "/communism [status|payout|toggle|forcetax|clearpool|givepool|guide|reload]"
+    usage: "/communism [status|forcepayout|toggle|forcetax|clearpool|givepool|guide|reload]"
