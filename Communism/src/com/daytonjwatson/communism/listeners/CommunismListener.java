@@ -1,5 +1,6 @@
 package com.daytonjwatson.communism.listeners;
 
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -104,8 +105,16 @@ public class CommunismListener implements Listener {
         // Stop normal drops; send them to the State instead.
         event.setDropItems(false);
 
-        // Treat each block as 1 "unit" for simplicity.
-        resourceManager.add(type, 1);
+        Collection<ItemStack> drops = event.getBlock().getDrops(player.getInventory().getItemInMainHand());
+
+        if (!drops.isEmpty()) {
+            for (ItemStack drop : drops) {
+                if (drop == null || drop.getType() == Material.AIR) continue;
+                resourceManager.add(drop.getType(), drop.getAmount());
+            }
+        } else {
+            resourceManager.add(type, 1);
+        }
 
         player.sendMessage(ChatColor.RED + "" + ChatColor.BOLD +
                 "All " + type.name() + " now belong to the State.");
