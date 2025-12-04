@@ -57,7 +57,7 @@ party-members:
   - UnsocialDEV
 
 party-bonus-multiplier: 2.0
-party-name-prefix: "&4[PARTY] &c"
+party-name-prefix: "&4[PARTY] &r"
 
 # Propaganda messages
 propaganda-interval-ticks: 6000

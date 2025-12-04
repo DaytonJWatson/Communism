@@ -32,6 +32,7 @@ import org.bukkit.scoreboard.Team;
 
 import com.daytonjwatson.communism.CommunismPlugin;
 import com.daytonjwatson.communism.managers.ResourceManager;
+import com.daytonjwatson.communism.utils.Utils;
 
 public class CommunismListener implements Listener {
 
@@ -360,10 +361,10 @@ public class CommunismListener implements Listener {
 
         if (isParty) {
             String prefix = plugin.getConfig().getString("party-name-prefix", "[PARTY] ");
-            player.setDisplayName(prefix + player.getName());
+            player.setDisplayName(Utils.color(prefix + player.getName()));
             applyPartyPrefix(player, prefix);
         } else {
-            player.setDisplayName(player.getName());
+            player.setDisplayName(Utils.color(player.getName()));
             removePartyPrefix(player);
         }
     }
