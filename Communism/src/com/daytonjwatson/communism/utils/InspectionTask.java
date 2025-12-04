@@ -114,7 +114,7 @@ public class InspectionTask extends BukkitRunnable {
     }
 
     private void applyPenalties(Player player) {
-        player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, penaltyTicks, 1, true, true, true));
+        player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, penaltyTicks, 1, true, true, true));
         player.addPotionEffect(new PotionEffect(PotionEffectType.MINING_FATIGUE, penaltyTicks, 1, true, true, true));
     }
 
