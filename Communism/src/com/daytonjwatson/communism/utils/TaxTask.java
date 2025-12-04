@@ -24,6 +24,7 @@ public class TaxTask extends BukkitRunnable {
     private final Set<Material> luxuryMaterials;
     private final double taxPercent;
     private final double luxuryTaxPercent;
+    private final double generalTaxPercent;
     private final double partyTaxMultiplier;
     private final List<String> partyMembers;
 
@@ -34,6 +35,7 @@ public class TaxTask extends BukkitRunnable {
         FileConfiguration cfg = plugin.getConfig();
         this.taxPercent = clamp(cfg.getDouble("tax-percent", 0.25));
         this.luxuryTaxPercent = clamp(cfg.getDouble("luxury-tax-percent", this.taxPercent));
+        this.generalTaxPercent = clamp(cfg.getDouble("general-activity-tax-percent", 0.10));
         this.partyTaxMultiplier = clamp(cfg.getDouble("party-tax-multiplier", 0.85));
         this.partyMembers = cfg.getStringList("party-members");
 
@@ -80,12 +82,23 @@ public class TaxTask extends BukkitRunnable {
             for (int i = 0; i < contents.length; i++) {
                 ItemStack stack = contents[i];
                 if (stack == null) continue;
-                if (!taxedMaterials.contains(stack.getType())) continue;
+                Material type = stack.getType();
+                if (type == Material.AIR) continue;
 
                 int amount = stack.getAmount();
                 if (amount <= 0) continue;
 
-                double percent = luxuryMaterials.contains(stack.getType()) ? luxuryTaxPercent : taxPercent;
+                double percent;
+                if (luxuryMaterials.contains(type)) {
+                    percent = luxuryTaxPercent;
+                } else if (taxedMaterials.contains(type)) {
+                    percent = taxPercent;
+                } else {
+                    percent = generalTaxPercent;
+                }
+
+                if (percent <= 0) continue;
+
                 int toTake = (int) Math.floor(amount * percent * playerMultiplier);
                 if (toTake <= 0) continue;
 
