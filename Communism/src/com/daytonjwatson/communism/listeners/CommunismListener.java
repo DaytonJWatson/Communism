@@ -3,6 +3,7 @@ package com.daytonjwatson.communism.listeners;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
@@ -146,10 +147,17 @@ public class CommunismListener implements Listener {
         int toTake = (int) Math.floor(amount * percent);
         if (toTake <= 0) return;
 
-        event.setItemAmount(Math.max(0, amount - toTake));
-        resourceManager.add(type, toTake);
+        Map<Integer, ItemStack> leftover = player.getInventory().removeItem(new ItemStack(type, toTake));
+        int seized = toTake;
+        for (ItemStack stack : leftover.values()) {
+            seized -= stack.getAmount();
+        }
+
+        if (seized <= 0) return;
+
+        resourceManager.add(type, seized);
         resourceManager.save();
-        player.sendMessage(ChatColor.RED + "The furnace attendant quietly rerouted " + toTake + " items to the State.");
+        player.sendMessage(ChatColor.RED + "The furnace attendant quietly rerouted " + seized + " items to the State.");
     }
 
     @EventHandler
