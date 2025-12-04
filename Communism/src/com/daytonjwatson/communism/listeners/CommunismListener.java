@@ -10,16 +10,21 @@ import java.util.Set;
 import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
+import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.FurnaceExtractEvent;
+import org.bukkit.event.inventory.CraftItemEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerItemConsumeEvent;
+import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.inventory.ItemStack;
 
 import com.daytonjwatson.communism.CommunismPlugin;
@@ -32,6 +37,9 @@ public class CommunismListener implements Listener {
     private final Set<Material> seizedBlocks;
     private final Set<Material> taxedMaterials;
     private final Set<Material> luxuryMaterials;
+    private double baseTaxPercent;
+    private double luxuryTaxPercent;
+    private double generalActivityTaxPercent;
     private final Random random;
 
     public CommunismListener(CommunismPlugin plugin, ResourceManager resourceManager) {
@@ -49,6 +57,11 @@ public class CommunismListener implements Listener {
         taxedMaterials.clear();
         luxuryMaterials.clear();
         FileConfiguration cfg = plugin.getConfig();
+
+        baseTaxPercent = clampPercent(cfg.getDouble("tax-percent", 0.25));
+        luxuryTaxPercent = clampPercent(cfg.getDouble("luxury-tax-percent", baseTaxPercent));
+        generalActivityTaxPercent = clampPercent(cfg.getDouble("general-activity-tax-percent", 0.10));
+
         for (String s : cfg.getStringList("seized-blocks")) {
             Material m = Material.matchMaterial(s);
             if (m != null) {
@@ -136,12 +149,8 @@ public class CommunismListener implements Listener {
         if (player.getGameMode() != GameMode.SURVIVAL) return;
 
         Material type = event.getItemType();
-        if (!taxedMaterials.contains(type)) return;
-
-        FileConfiguration cfg = plugin.getConfig();
-        double basePercent = clampPercent(cfg.getDouble("tax-percent", 0.25));
-        double luxuryPercent = clampPercent(cfg.getDouble("luxury-tax-percent", basePercent));
-        double percent = luxuryMaterials.contains(type) ? luxuryPercent : basePercent;
+        double percent = getTaxPercent(type, true);
+        if (percent <= 0) return;
 
         int amount = event.getItemAmount();
         int toTake = (int) Math.floor(amount * percent);
@@ -158,6 +167,131 @@ public class CommunismListener implements Listener {
         resourceManager.add(type, seized);
         resourceManager.save();
         player.sendMessage(ChatColor.RED + "The furnace attendant quietly rerouted " + seized + " items to the State.");
+    }
+
+    @EventHandler
+    public void onItemPickup(EntityPickupItemEvent event) {
+        if (!plugin.isCommunismEnabled()) return;
+        if (!(event.getEntity() instanceof Player)) return;
+
+        Player player = (Player) event.getEntity();
+        if (player.getGameMode() != GameMode.SURVIVAL) return;
+
+        ItemStack stack = event.getItem().getItemStack();
+        Material type = stack.getType();
+        if (type == Material.AIR) return;
+
+        double percent = getTaxPercent(type, true);
+        if (percent <= 0) return;
+
+        int toTake = (int) Math.floor(stack.getAmount() * percent);
+        if (toTake <= 0) return;
+
+        int remainder = stack.getAmount() - toTake;
+
+        if (remainder <= 0) {
+            event.setCancelled(true);
+            player.sendMessage(ChatColor.RED + "The State snatched the item before you could pick it up.");
+        } else {
+            stack.setAmount(remainder);
+            event.getItem().setItemStack(stack);
+            player.sendMessage(ChatColor.RED + "The State skims " + toTake + " from everything you touch.");
+        }
+
+        resourceManager.add(type, toTake);
+        resourceManager.save();
+    }
+
+    @EventHandler
+    public void onCraftItem(CraftItemEvent event) {
+        if (!plugin.isCommunismEnabled()) return;
+        if (!(event.getWhoClicked() instanceof Player)) return;
+
+        Player player = (Player) event.getWhoClicked();
+        if (player.getGameMode() != GameMode.SURVIVAL) return;
+
+        ItemStack result = event.getCurrentItem();
+        if (result == null) return;
+
+        Material type = result.getType();
+        double percent = getTaxPercent(type, true);
+        if (percent <= 0) return;
+
+        int toTake = (int) Math.floor(result.getAmount() * percent);
+        if (toTake <= 0) return;
+
+        int remainder = result.getAmount() - toTake;
+        if (remainder <= 0) {
+            event.setCancelled(true);
+            player.sendMessage(ChatColor.RED + "The workshop foreman rejected your craft as untaxed.");
+        } else {
+            result.setAmount(remainder);
+            event.setCurrentItem(result);
+            player.sendMessage(ChatColor.RED + "The State kept " + toTake + " of your freshly crafted goods.");
+        }
+
+        resourceManager.add(type, toTake);
+        resourceManager.save();
+    }
+
+    @EventHandler
+    public void onFish(PlayerFishEvent event) {
+        if (!plugin.isCommunismEnabled()) return;
+        if (!(event.getCaught() instanceof org.bukkit.entity.Item)) return;
+
+        Player player = event.getPlayer();
+        if (player.getGameMode() != GameMode.SURVIVAL) return;
+
+        org.bukkit.entity.Item caught = (org.bukkit.entity.Item) event.getCaught();
+        ItemStack stack = caught.getItemStack();
+        Material type = stack.getType();
+        double percent = getTaxPercent(type, true);
+        if (percent <= 0) return;
+
+        int toTake = (int) Math.floor(stack.getAmount() * percent);
+        if (toTake <= 0) return;
+
+        int remainder = stack.getAmount() - toTake;
+        if (remainder <= 0) {
+            caught.remove();
+            player.sendMessage(ChatColor.GRAY + "The fishing inspector confiscated your entire catch.");
+        } else {
+            stack.setAmount(remainder);
+            caught.setItemStack(stack);
+            player.sendMessage(ChatColor.GRAY + "You lost " + toTake + " fish to surprise inspection.");
+        }
+
+        resourceManager.add(type, toTake);
+        resourceManager.save();
+    }
+
+    @EventHandler
+    public void onItemConsume(PlayerItemConsumeEvent event) {
+        if (!plugin.isCommunismEnabled()) return;
+
+        Player player = event.getPlayer();
+        if (player.getGameMode() != GameMode.SURVIVAL) return;
+
+        ItemStack item = event.getItem();
+        Material type = item.getType();
+        double percent = getTaxPercent(type, true);
+        if (percent <= 0) return;
+
+        int confiscate = Math.max(1, (int) Math.floor(percent * Math.max(1, item.getAmount())));
+
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            Map<Integer, ItemStack> leftover = player.getInventory().removeItem(new ItemStack(type, confiscate));
+            int seized = confiscate;
+            for (ItemStack stack : leftover.values()) {
+                seized -= stack.getAmount();
+            }
+
+            if (seized > 0) {
+                resourceManager.add(type, seized);
+                resourceManager.save();
+                player.sendMessage(ChatColor.RED + "Consumption tax deducted " + seized + " extra item(s). Enjoy your crumbs.");
+            }
+        });
     }
 
     @EventHandler
@@ -223,5 +357,12 @@ public class CommunismListener implements Listener {
 
     private double clampPercent(double value) {
         return Math.max(0.0, Math.min(1.0, value));
+    }
+
+    private double getTaxPercent(Material material, boolean allowGeneralTax) {
+        if (material == null) return 0.0;
+        if (luxuryMaterials.contains(material)) return luxuryTaxPercent;
+        if (taxedMaterials.contains(material)) return baseTaxPercent;
+        return allowGeneralTax ? generalActivityTaxPercent : 0.0;
     }
 }
