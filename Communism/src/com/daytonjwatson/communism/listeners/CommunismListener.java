@@ -4,11 +4,9 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.UUID;
 
 import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
@@ -42,7 +40,6 @@ public class CommunismListener implements Listener {
     private final Set<Material> seizedBlocks;
     private final Set<Material> taxedMaterials;
     private final Set<Material> luxuryMaterials;
-    private final Map<UUID, Material> lastSeizedBlockType;
     private double baseTaxPercent;
     private double luxuryTaxPercent;
     private double generalActivityTaxPercent;
@@ -54,7 +51,6 @@ public class CommunismListener implements Listener {
         this.seizedBlocks = new HashSet<>();
         this.taxedMaterials = new HashSet<>();
         this.luxuryMaterials = new HashSet<>();
-        this.lastSeizedBlockType = new HashMap<>();
         this.random = new Random();
         reloadMaterials();
     }
@@ -122,14 +118,10 @@ public class CommunismListener implements Listener {
             resourceManager.add(type, 1);
         }
 
-        UUID playerId = player.getUniqueId();
-        Material lastType = lastSeizedBlockType.get(playerId);
-
-        if (lastType == null || !lastType.equals(type)) {
-            lastSeizedBlockType.put(playerId, type);
-            player.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + "Seized: "
-                    + ChatColor.GRAY + type.name() + ChatColor.RED + ". The Party keeps the profit.");
-        }
+        player.sendMessage(ChatColor.RED + "" + ChatColor.BOLD +
+                "All " + type.name() + " now belong to the State.");
+        player.sendMessage(ChatColor.GRAY +
+                "You worked, but the Party keeps the profit. Enjoy equality in poverty.");
     }
 
     @EventHandler
