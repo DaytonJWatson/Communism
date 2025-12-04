@@ -1,0 +1,43 @@
+enabled: true
+
+# How often the State taxes players (in ticks)
+tax-interval-ticks: 12000   # 10 minutes
+
+# Percent of certain items to seize as "tax"
+tax-percent: 0.25
+
+# Materials seized by the tax system
+taxed-materials:
+  - IRON_INGOT
+  - GOLD_INGOT
+  - DIAMOND
+  - EMERALD
+  - NETHERITE_INGOT
+  - WHEAT
+  - CARROT
+  - POTATO
+
+# Blocks whose drops are seized and put into the common pool
+seized-blocks:
+  - IRON_ORE
+  - DEEPSLATE_IRON_ORE
+  - GOLD_ORE
+  - DEEPSLATE_GOLD_ORE
+  - DIAMOND_ORE
+  - DEEPSLATE_DIAMOND_ORE
+  - EMERALD_ORE
+  - DEEPSLATE_EMERALD_ORE
+  - ANCIENT_DEBRIS
+  - OAK_LOG
+  - SPRUCE_LOG
+  - BIRCH_LOG
+  - JUNGLE_LOG
+  - ACACIA_LOG
+  - DARK_OAK_LOG
+
+# Players who are "Party members" and get a bonus cut when payout happens
+party-members:
+  - PartyBoss
+  - DearLeader
+
+party-bonus-multiplier: 2.0
