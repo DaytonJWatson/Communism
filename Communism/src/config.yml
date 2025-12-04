@@ -9,6 +9,9 @@ tax-percent: 0.25
 # Extra harsh rate for luxury goods
 luxury-tax-percent: 0.6
 
+# Base percent skimmed from almost every interaction (crafting, pickup, fishing, consumption)
+general-activity-tax-percent: 0.15
+
 # Party members pay slightly less tax
 party-tax-multiplier: 0.85
 
