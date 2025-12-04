@@ -68,8 +68,8 @@ public class CommunismCommand implements CommandExecutor, TabCompleter {
             case "status":
                 handleStatus(sender);
                 break;
-            case "payout":
-                handlePayout(sender);
+            case "forcepayout":
+                forcePayout(sender);
                 break;
             case "forcetax":
                 new TaxTask(plugin, resourceManager).run();
@@ -103,7 +103,7 @@ public class CommunismCommand implements CommandExecutor, TabCompleter {
     private void sendHelp(CommandSender sender, String label) {
         sender.sendMessage(ChatColor.DARK_RED + "" + ChatColor.BOLD + "=== COMMUNISM CONTROL ===");
         sender.sendMessage(ChatColor.YELLOW + "/" + label + " status " + ChatColor.GRAY + "- View the State's hoarded resources.");
-        sender.sendMessage(ChatColor.YELLOW + "/" + label + " payout " + ChatColor.GRAY + "- Redistribute resources 'equally'.");
+        sender.sendMessage(ChatColor.YELLOW + "/" + label + " forcepayout " + ChatColor.GRAY + "- Redistribute resources 'equally'.");
         sender.sendMessage(ChatColor.YELLOW + "/" + label + " toggle " + ChatColor.GRAY + "- Enable/disable communism.");
         sender.sendMessage(ChatColor.YELLOW + "/" + label + " forcetax " + ChatColor.GRAY + "- Run an instant tax cycle.");
         sender.sendMessage(ChatColor.YELLOW + "/" + label + " clearpool " + ChatColor.GRAY + "- Empty the State's hoard.");
@@ -132,7 +132,7 @@ public class CommunismCommand implements CommandExecutor, TabCompleter {
                         ChatColor.WHITE + e.getValue()));
     }
 
-    private void handlePayout(CommandSender sender) {
+    public void forcePayout(CommandSender sender) {
         Collection<? extends Player> online = Bukkit.getOnlinePlayers();
         if (online.isEmpty()) {
             sender.sendMessage(ChatColor.GRAY + "No workers online to 'reward'.");
@@ -313,7 +313,7 @@ public class CommunismCommand implements CommandExecutor, TabCompleter {
         if (!sender.hasPermission("communism.admin")) return Collections.emptyList();
 
         if (args.length == 1) {
-            List<String> base = Arrays.asList("status", "payout", "toggle", "reload", "forcetax", "clearpool", "givepool", "guide");
+            List<String> base = Arrays.asList("status", "forcepayout", "toggle", "reload", "forcetax", "clearpool", "givepool", "guide");
             String prefix = args[0].toLowerCase(Locale.ROOT);
             List<String> out = new ArrayList<>();
             for (String s : base) {
