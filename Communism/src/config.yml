@@ -37,7 +37,6 @@ seized-blocks:
 
 # Players who are "Party members" and get a bonus cut when payout happens
 party-members:
-  - PartyBoss
-  - DearLeader
+  - UnsocialDEV
 
 party-bonus-multiplier: 2.0
