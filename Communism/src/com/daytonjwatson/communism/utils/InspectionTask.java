@@ -41,18 +41,9 @@ public class InspectionTask extends BukkitRunnable {
         this.partyMembers = cfg.getStringList("party-members");
 
         contraband = new HashSet<>();
-        for (String s : cfg.getStringList("taxed-materials")) {
-            Material mat = Material.matchMaterial(s);
-            if (mat != null) {
-                contraband.add(mat);
-            }
-        }
-        for (String s : cfg.getStringList("luxury-materials")) {
-            Material mat = Material.matchMaterial(s);
-            if (mat != null) {
-                contraband.add(mat);
-            }
-        }
+        addContraband(cfg.getStringList("inspection-contraband-materials"));
+        addContraband(cfg.getStringList("taxed-materials"));
+        addContraband(cfg.getStringList("luxury-materials"));
     }
 
     @Override
@@ -143,5 +134,14 @@ public class InspectionTask extends BukkitRunnable {
 
     private double clamp(double value) {
         return Math.max(0.0, Math.min(1.0, value));
+    }
+
+    private void addContraband(List<String> materials) {
+        for (String s : materials) {
+            Material mat = Material.matchMaterial(s);
+            if (mat != null) {
+                contraband.add(mat);
+            }
+        }
     }
 }

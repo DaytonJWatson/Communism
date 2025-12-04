@@ -84,6 +84,14 @@ max-food-level: 14
 ration-denial-chance: 0.12
 
 # Surprise inspection tuning
+inspection-contraband-materials:
+  - TNT
+  - GUNPOWDER
+  - CROSSBOW
+  - TRIDENT
+  - NETHER_WART
+  - BLAZE_ROD
+  - ENDER_PEARL
 inspection-contraband-threshold: 48
 inspection-seizure-percent: 0.35
 inspection-penalty-ticks: 400
